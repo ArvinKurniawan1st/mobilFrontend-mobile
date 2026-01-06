@@ -1,16 +1,34 @@
+// components/ModeSwitch.js
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { API } from "../services/api";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { setMode } from "../services/api";
 
 import { getShadow, RADIUS, rfs, rs, SPACING } from "../utils/responsive";
 
 export default function ModeSwitch() {
   const [activeMode, setActiveMode] = useState("manual");
+  const [isSwitching, setIsSwitching] = useState(false);
 
-  const switchMode = (mode) => {
-    setActiveMode(mode);
-    API.post("/mobil/mode", { mode });
+  const switchMode = async (mode) => {
+    if (isSwitching) return;
+    
+    try {
+      setIsSwitching(true);
+      await setMode(mode);
+      setActiveMode(mode);
+      
+      Alert.alert(
+        "Mode Changed", 
+        `Switched to ${mode.toUpperCase()} mode`,
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Failed to switch mode:", error);
+      Alert.alert("Error", "Failed to switch mode");
+    } finally {
+      setIsSwitching(false);
+    }
   };
 
   return (
@@ -42,9 +60,11 @@ export default function ModeSwitch() {
         <TouchableOpacity
           onPress={() => switchMode("manual")}
           activeOpacity={0.8}
+          disabled={isSwitching}
           style={[
             styles.modeButton,
-            activeMode === "manual" && styles.modeButtonActive
+            activeMode === "manual" && styles.modeButtonActive,
+            isSwitching && styles.modeButtonDisabled
           ]}
         >
           <LinearGradient
@@ -79,9 +99,11 @@ export default function ModeSwitch() {
         <TouchableOpacity
           onPress={() => switchMode("auto")}
           activeOpacity={0.8}
+          disabled={isSwitching}
           style={[
             styles.modeButton,
-            activeMode === "auto" && styles.modeButtonActive
+            activeMode === "auto" && styles.modeButtonActive,
+            isSwitching && styles.modeButtonDisabled
           ]}
         >
           <LinearGradient
@@ -189,6 +211,9 @@ const styles = StyleSheet.create({
   modeButtonActive: {
     borderColor: 'rgba(255, 255, 255, 0.3)',
     ...getShadow('#00d4ff', 0.5, 8)
+  },
+  modeButtonDisabled: {
+    opacity: 0.6
   },
   modeGradient: {
     paddingVertical: rs(16, 18, 22),

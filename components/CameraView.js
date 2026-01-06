@@ -1,10 +1,36 @@
+// components/CameraView.js
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, Text, View } from "react-native";
-import { WebView } from "react-native-webview";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 
 import { getShadow, isSmallDevice, RADIUS, rfs, rs, SPACING } from "../utils/responsive";
 
 export default function CameraView() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [imageKey, setImageKey] = useState(0);
+  
+  const CAMERA_URL = "http://192.168.100.138/stream";
+  
+  useEffect(() => {
+    // Refresh image every 100ms for smooth video-like experience
+    const interval = setInterval(() => {
+      setImageKey(prev => prev + 1);
+    }, 100);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleImageLoad = () => {
+    setLoading(false);
+    setError(false);
+  };
+
+  const handleImageError = () => {
+    setLoading(false);
+    setError(true);
+  };
+
   return (
     <LinearGradient
       colors={['#1a2347', '#0f1729']}
@@ -15,28 +41,57 @@ export default function CameraView() {
           <Text style={styles.icon}>📷</Text>
         </View>
         <Text style={styles.title}>LIVE CAMERA</Text>
-        <View style={styles.liveDot} />
+        <View style={[styles.liveDot, error && styles.liveDotError]} />
       </View>
 
       <View style={styles.cameraWrapper}>
         <View style={styles.cameraContainer}>
-          <WebView
-            source={{ uri: "http://192.168.100.138:81/stream" }}
-            style={styles.webview}
-            javaScriptEnabled
-            domStorageEnabled
-            startInLoadingState
-            renderLoading={() => (
-              <View style={styles.loading}>
-                <Text style={styles.loadingText}>Loading Camera...</Text>
-              </View>
-            )}
-          />
+          {loading && (
+            <View style={styles.loading}>
+              <ActivityIndicator size="large" color="#00d4ff" />
+              <Text style={styles.loadingText}>Connecting...</Text>
+            </View>
+          )}
+          
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorIcon}>📷</Text>
+              <Text style={styles.errorTitle}>Camera Offline</Text>
+              <Text style={styles.errorText}>
+                Cannot connect to ESP32-CAM
+              </Text>
+              <Text style={styles.errorSubtext}>
+                Check: {'\n'}
+                • ESP32-CAM is powered on{'\n'}
+                • IP address is correct{'\n'}
+                • Same WiFi network
+              </Text>
+            </View>
+          )}
+          
+          {!error && (
+            <Image
+              key={imageKey}
+              source={{ 
+                uri: `${CAMERA_URL}?t=${imageKey}`,
+                cache: 'reload'
+              }}
+              style={styles.cameraImage}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              resizeMode="cover"
+            />
+          )}
+          
           {/* Corner Frames */}
-          <View style={styles.frameTopLeft} />
-          <View style={styles.frameTopRight} />
-          <View style={styles.frameBottomLeft} />
-          <View style={styles.frameBottomRight} />
+          {!error && (
+            <>
+              <View style={styles.frameTopLeft} />
+              <View style={styles.frameTopRight} />
+              <View style={styles.frameBottomLeft} />
+              <View style={styles.frameBottomRight} />
+            </>
+          )}
         </View>
       </View>
     </LinearGradient>
@@ -47,6 +102,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
+    marginBottom: SPACING.md,
     borderWidth: 1,
     borderColor: 'rgba(0, 212, 255, 0.2)',
     ...getShadow('#00d4ff', 0.3, 8)
@@ -87,6 +143,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 6
   },
+  liveDotError: {
+    backgroundColor: '#ff3838',
+    shadowColor: '#ff3838'
+  },
   cameraWrapper: {
     aspectRatio: isSmallDevice ? 4/3 : 16/9,
     borderRadius: RADIUS.md,
@@ -95,10 +155,13 @@ const styles = StyleSheet.create({
   },
   cameraContainer: {
     flex: 1,
-    position: 'relative'
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  webview: {
-    flex: 1,
+  cameraImage: {
+    width: '100%',
+    height: '100%',
     backgroundColor: '#000'
   },
   loading: {
@@ -109,11 +172,45 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000'
+    backgroundColor: '#000',
+    gap: 12,
+    zIndex: 10
   },
   loadingText: {
     color: '#00d4ff',
-    fontSize: rfs(12)
+    fontSize: rfs(12),
+    fontWeight: '600'
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0a0e27',
+    padding: SPACING.lg,
+    gap: 8
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 8,
+    opacity: 0.5
+  },
+  errorTitle: {
+    fontSize: rfs(16),
+    fontWeight: '700',
+    color: '#ff3838',
+    marginBottom: 4
+  },
+  errorText: {
+    fontSize: rfs(12),
+    color: '#8a9bc4',
+    textAlign: 'center'
+  },
+  errorSubtext: {
+    fontSize: rfs(10),
+    color: '#4a5a7a',
+    textAlign: 'left',
+    marginTop: 12,
+    lineHeight: 18
   },
   frameTopLeft: {
     position: 'absolute',

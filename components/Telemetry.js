@@ -1,23 +1,19 @@
+// components/Telemetry.js
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { socket } from "../services/websocket";
 
 import { getShadow, RADIUS, rfs, rs, SPACING } from "../utils/responsive";
 
-export default function Telemetry() {
-  const [mobil, setMobil] = useState({
-    x: 0, y: 0, heading: 0, speed: 0, front_distance: 0
-  });
-
-  useEffect(() => {
-    socket.onmessage = (msg) => {
-      const data = JSON.parse(msg.data);
-      if (data.type === "telemetry") {
-        setMobil(data.data);
-      }
-    };
-  }, []);
+// Receive mobil data as prop instead of using WebSocket directly
+export default function Telemetry({ mobil }) {
+  // Use the mobil prop passed from parent
+  const telemetryData = mobil || {
+    x: 0, 
+    y: 0, 
+    heading: 0, 
+    speed: 0, 
+    front_distance: 0
+  };
 
   const MetricCard = ({ icon, label, value, unit, color = '#00d4ff', alert = false }) => (
     <View style={styles.metricCard}>
@@ -56,14 +52,14 @@ export default function Telemetry() {
             <MetricCard
               icon="📍"
               label="X"
-              value={mobil.x.toFixed(2)}
+              value={telemetryData.x.toFixed(2)}
               unit="m"
               color="#00d4ff"
             />
             <MetricCard
               icon="📍"
               label="Y"
-              value={mobil.y.toFixed(2)}
+              value={telemetryData.y.toFixed(2)}
               unit="m"
               color="#00d4ff"
             />
@@ -74,7 +70,7 @@ export default function Telemetry() {
         <MetricCard
           icon="🧭"
           label="HEADING"
-          value={mobil.heading.toFixed(1)}
+          value={telemetryData.heading.toFixed(1)}
           unit="°"
           color="#ff6b35"
         />
@@ -82,7 +78,7 @@ export default function Telemetry() {
         <MetricCard
           icon="⚡"
           label="SPEED"
-          value={mobil.speed.toFixed(2)}
+          value={telemetryData.speed.toFixed(2)}
           unit="m/s"
           color="#00ff88"
         />
@@ -90,10 +86,10 @@ export default function Telemetry() {
         <MetricCard
           icon="📏"
           label="OBSTACLE"
-          value={mobil.front_distance}
+          value={telemetryData.front_distance}
           unit="cm"
           color="#00ff88"
-          alert={mobil.front_distance < 30 && mobil.front_distance > 0}
+          alert={telemetryData.front_distance < 30 && telemetryData.front_distance > 0}
         />
       </View>
     </LinearGradient>
@@ -104,6 +100,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
+    marginBottom: SPACING.md,
     borderWidth: 1,
     borderColor: 'rgba(0, 212, 255, 0.2)',
     ...getShadow('#00d4ff', 0.3, 8)

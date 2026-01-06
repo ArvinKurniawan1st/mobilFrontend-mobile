@@ -1,7 +1,8 @@
+// components/Joystick.js
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { API } from "../services/api";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { sendCommand } from "../services/api";
 
 import { getShadow, RADIUS, rfs, rs, SPACING } from "../utils/responsive";
 
@@ -9,14 +10,23 @@ export default function Joystick() {
   const [speed] = useState(150);
   const [activeBtn, setActiveBtn] = useState(null);
 
-  const send = (cmd) => {
-    setActiveBtn(cmd);
-    API.post("/mobil/command", { cmd, speed });
+  const send = async (cmd) => {
+    try {
+      setActiveBtn(cmd);
+      await sendCommand(cmd, speed);
+    } catch (error) {
+      console.error("Failed to send command:", error);
+      Alert.alert("Error", "Failed to send command to car");
+    }
   };
 
-  const stop = () => {
-    setActiveBtn(null);
-    API.post("/mobil/command", { cmd: "stop", speed });
+  const stop = async () => {
+    try {
+      setActiveBtn(null);
+      await sendCommand("stop", speed);
+    } catch (error) {
+      console.error("Failed to stop:", error);
+    }
   };
 
   const ControlButton = ({ direction, icon, style }) => {

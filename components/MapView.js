@@ -1,15 +1,39 @@
+// components/MapView.js
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { API } from "../services/api";
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { sendWaypoint } from "../services/api";
 import { getShadow, RADIUS, rfs, rs, SPACING } from "../utils/responsive";
 
-export default function MapView() {
-  const [target, setTarget] = useState({ x: 0, y: 0 });
+export default function MapView({ target, setTarget }) {
+  const [inputX, setInputX] = useState("0");
+  const [inputY, setInputY] = useState("0");
+  const [isSending, setIsSending] = useState(false);
 
-  const send = () => {
-    API.post("/waypoint", target);
+  const send = async () => {
+    try {
+      setIsSending(true);
+      
+      const x = parseFloat(inputX) || 0;
+      const y = parseFloat(inputY) || 0;
+      
+      await sendWaypoint(x, y);
+      
+      // Update local state
+      if (setTarget) {
+        setTarget({ x, y });
+      }
+      
+      Alert.alert("Success", `Waypoint sent: (${x.toFixed(2)}, ${y.toFixed(2)})`);
+    } catch (error) {
+      console.error("Failed to send waypoint:", error);
+      Alert.alert("Error", "Failed to send waypoint");
+    } finally {
+      setIsSending(false);
+    }
   };
+
+  const currentTarget = target || { x: 0, y: 0 };
 
   return (
     <LinearGradient
@@ -37,7 +61,8 @@ export default function MapView() {
                 placeholderTextColor="#4a5a7a"
                 keyboardType="numeric"
                 style={styles.input}
-                onChangeText={x => setTarget(t => ({ ...t, x: +x || 0 }))}
+                value={inputX}
+                onChangeText={setInputX}
               />
               <Text style={styles.inputUnit}>m</Text>
             </View>
@@ -52,7 +77,8 @@ export default function MapView() {
                 placeholderTextColor="#4a5a7a"
                 keyboardType="numeric"
                 style={styles.input}
-                onChangeText={y => setTarget(t => ({ ...t, y: +y || 0 }))}
+                value={inputY}
+                onChangeText={setInputY}
               />
               <Text style={styles.inputUnit}>m</Text>
             </View>
@@ -63,16 +89,22 @@ export default function MapView() {
         <TouchableOpacity 
           onPress={send}
           activeOpacity={0.8}
-          style={styles.sendButton}
+          disabled={isSending}
+          style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
         >
           <LinearGradient
-            colors={['#00d4ff', '#0088ff']}
+            colors={isSending 
+              ? ['#666666', '#444444']
+              : ['#00d4ff', '#0088ff']
+            }
             style={styles.buttonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.buttonIcon}>🎯</Text>
-            <Text style={styles.buttonText}>SEND WAYPOINT</Text>
+            <Text style={styles.buttonText}>
+              {isSending ? 'SENDING...' : 'SEND WAYPOINT'}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -82,12 +114,12 @@ export default function MapView() {
           <View style={styles.targetRow}>
             <View style={styles.targetItem}>
               <Text style={styles.targetAxis}>X:</Text>
-              <Text style={styles.targetValue}>{target.x.toFixed(2)}</Text>
+              <Text style={styles.targetValue}>{currentTarget.x.toFixed(2)}</Text>
             </View>
             <View style={styles.separator} />
             <View style={styles.targetItem}>
               <Text style={styles.targetAxis}>Y:</Text>
-              <Text style={styles.targetValue}>{target.y.toFixed(2)}</Text>
+              <Text style={styles.targetValue}>{currentTarget.y.toFixed(2)}</Text>
             </View>
           </View>
         </View>
@@ -100,6 +132,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
+    marginBottom: SPACING.md,
     borderWidth: 1,
     borderColor: 'rgba(0, 212, 255, 0.2)',
     ...getShadow('#00d4ff', 0.3, 8)
@@ -182,6 +215,9 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     overflow: 'hidden',
     ...getShadow('#00d4ff', 0.5, 8)
+  },
+  sendButtonDisabled: {
+    opacity: 0.6
   },
   buttonGradient: {
     flexDirection: 'row',
